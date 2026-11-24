@@ -1,0 +1,931 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="light dark" />
+<link rel="icon" href="data:," />
+<title>텔레그램 미니앱</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root{
+    --bg:#f7f7f4; --surface:#ffffff; --surface2:#f1f1ec; --ink:#1c1f24; --muted:#6d7278;
+    --line:#e7e5de; --accent:#4a90c2; --accent-dark:#2f6f9f; --accent-soft:#e8f1f8;
+    --ok:#3d9e63; --coral:#e0685a; --coral-soft:#fbf0ee; --teal:#3d968b;
+    --radius:18px; --shadow:0 1px 2px rgba(28,31,36,.04),0 10px 28px rgba(28,31,36,.06);
+    --free-tile:#e2eefb; --free-tile-2:#eef5fd; --free-ink:#33689e; --free-dot:rgba(51,104,158,.13);
+    --gal-tile:#fdeee7; --gal-tile-2:#fdf5ef; --gal-ink:#b85a41; --gal-dot:rgba(184,90,65,.13);
+    --dot:rgba(28,31,36,.055);
+    --feed-ink:#23272e;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#121417; --surface:#1b1e23; --surface2:#262a30; --ink:#f2f2ee; --muted:#9ba1a8;
+      --line:#2b2f36; --accent-soft:#1d2c3a; --coral-soft:#33211e; --shadow:0 12px 32px rgba(0,0,0,.45);
+      --free-tile:#22384c; --free-tile-2:#1d303f; --free-ink:#a9cdec; --free-dot:rgba(169,205,236,.14);
+      --gal-tile:#43302a; --gal-tile-2:#382a26; --gal-ink:#f0bda9; --gal-dot:rgba(240,189,169,.14);
+      --dot:rgba(255,255,255,.06); --feed-ink:#23272e; }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background-color:var(--bg);background-image:radial-gradient(var(--dot) 1.1px,transparent 1.1px);background-size:22px 22px;color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Malgun Gothic","Apple SD Gothic Neo",sans-serif;-webkit-font-smoothing:antialiased}
+  button{font:inherit;cursor:pointer}
+  a{color:var(--accent-dark)}
+  button,[role="button"],select,input:not([type="checkbox"]){min-height:44px}
+  .shell{max-width:560px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column;padding-bottom:78px}
+  .topbar{position:sticky;top:0;z-index:30;background:color-mix(in srgb,var(--bg) 86%,transparent);-webkit-backdrop-filter:blur(16px) saturate(1.4);backdrop-filter:blur(16px) saturate(1.4);padding:14px 16px 10px;display:flex;align-items:center;gap:10px}
+  .backbtn{display:none;width:40px;height:40px;border:1px solid var(--line);border-radius:999px;background:var(--surface);box-shadow:0 2px 8px rgba(15,23,42,.06);font-size:22px;color:var(--ink);align-items:center;justify-content:center;flex:0 0 auto;line-height:1;padding-bottom:2px}
+  .backbtn.show{display:flex}
+  .topbar h1{font-size:19px;margin:0;line-height:1.25;font-weight:800;letter-spacing:-.02em}
+  .topbar p{margin:2px 0 0;font-size:12.5px;color:var(--muted)}
+  .tg-badge{margin-left:auto;flex:0 0 auto;font-size:11px;font-weight:700;padding:6px 10px;border-radius:999px;background:var(--surface);border:1px solid var(--line);color:var(--muted);display:inline-flex;align-items:center;gap:6px}
+  .tg-badge::before{content:"";width:6px;height:6px;border-radius:50%;background:#cbd5e1;display:block}
+  .tg-badge.on{background:#ecfdf5;color:#059669;border-color:#a7f3d0}
+  .tg-badge.on::before{background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.18)}
+  @media (prefers-color-scheme: dark){ .tg-badge.on{background:#123526;color:#5fd68d} }
+  main{flex:1;padding:4px 16px 12px}
+  main.flush{padding:0}
+  .view{display:none}
+  .view.active{display:block}
+  /* HOME - app icon launcher — soft pastel tiles with a subtle pattern */
+  .intro{margin:14px 0 4px;background:var(--surface);border:1px solid var(--line);border-radius:24px;padding:22px 20px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+  .intro::before{content:"";position:absolute;inset:0;background-image:radial-gradient(var(--dot) 1.1px,transparent 1.1px);background-size:18px 18px;pointer-events:none}
+  .intro::after{content:"";position:absolute;right:-46px;top:-46px;width:150px;height:150px;border-radius:50%;border:26px solid var(--accent-soft);opacity:.55;pointer-events:none}
+  .intro h2{font-size:26px;line-height:1.22;margin:0 0 8px;letter-spacing:-.03em;font-weight:800;position:relative;z-index:1}
+  .intro p{margin:0;color:var(--muted);font-size:14.5px;line-height:1.6;position:relative;z-index:1;max-width:42ch}
+  .launcher-label{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:24px 2px 14px}
+  .launcher{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .launcher-app{border:0;background:transparent;padding:0;text-align:center;color:var(--ink);-webkit-tap-highlight-color:transparent}
+  .launcher-app:active .app-icon-big{transform:scale(.94)}
+  .launcher-app:focus-visible{outline:2px solid var(--accent);outline-offset:4px;border-radius:32px}
+  /* Squircle app icon — pale tinted tile, dot pattern, white glyph chip */
+  .app-icon-big{
+    width:100%;aspect-ratio:1/1;
+    border-radius:32px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;
+    position:relative;overflow:hidden;isolation:isolate;
+    border:1px solid var(--line);
+    transition:transform .18s cubic-bezier(.34,1.56,.64,1), box-shadow .18s ease;
+  }
+  .app-icon-big.free{
+    background-color:var(--free-tile-2);
+    background-image:radial-gradient(var(--free-dot) 1.4px,transparent 1.4px),linear-gradient(160deg,var(--free-tile) 0%,var(--free-tile-2) 78%);
+    background-size:16px 16px,100% 100%;
+    box-shadow:0 1px 2px rgba(51,104,158,.06),0 12px 26px rgba(51,104,158,.10);
+  }
+  .app-icon-big.gallery{
+    background-color:var(--gal-tile-2);
+    background-image:radial-gradient(var(--gal-dot) 1.4px,transparent 1.4px),linear-gradient(160deg,var(--gal-tile) 0%,var(--gal-tile-2) 78%);
+    background-size:16px 16px,100% 100%;
+    box-shadow:0 1px 2px rgba(184,90,65,.06),0 12px 26px rgba(184,90,65,.10);
+  }
+  /* soft ring deco, like a pattern motif in the corner */
+  .app-icon-big::after{content:"";position:absolute;right:-34px;bottom:-34px;width:104px;height:104px;border-radius:50%;border:18px solid rgba(255,255,255,.5);z-index:1;pointer-events:none}
+  @media (prefers-color-scheme: dark){ .app-icon-big::after{border-color:rgba(255,255,255,.07)} }
+  .app-icon-big .glyph{width:72px;height:72px;position:relative;z-index:3;display:grid;place-items:center;background:#fff;border-radius:22px;padding:13px;box-shadow:0 2px 6px rgba(28,31,36,.07),0 10px 22px rgba(28,31,36,.08)}
+  @media (prefers-color-scheme: dark){ .app-icon-big .glyph{background:#f4f4f0} }
+  .app-icon-big .glyph svg{width:100%;height:100%;display:block}
+  .app-icon-big .badge{position:relative;z-index:3;font-size:11px;font-weight:700;letter-spacing:.02em;background:rgba(255,255,255,.92);color:#2b2f36;padding:5px 10px;border-radius:999px;box-shadow:0 2px 8px rgba(28,31,36,.08);display:inline-flex;align-items:center;gap:5px;line-height:1}
+  .app-icon-big .badge i{width:6px;height:6px;border-radius:50%;background:#4cb877;display:block;flex:0 0 auto}
+  .app-icon-big.gallery .badge i{background:#e0685a}
+  .app-icon-big .count{position:absolute;top:12px;right:12px;z-index:4;background:#fff;color:#2b2f36;font-size:12px;font-weight:800;min-width:28px;height:28px;border-radius:999px;display:flex;align-items:center;justify-content:center;padding:0 8px;box-shadow:0 2px 8px rgba(28,31,36,.10);border:1px solid var(--line);font-variant-numeric:tabular-nums}
+  .launcher-app h3{margin:12px 0 3px;font-size:16px;font-weight:700;letter-spacing:-.01em}
+  .launcher-app p{margin:0;font-size:12.5px;color:var(--muted);line-height:1.5;padding:0 6px}
+  /* Quick list — tinted squircle tiles */
+  .quick-list{margin-top:22px;background:var(--surface);border:1px solid var(--line);border-radius:24px;overflow:hidden;box-shadow:var(--shadow)}
+  .quick-row{width:100%;display:flex;align-items:center;gap:14px;padding:14px 16px;border:0;border-bottom:1px solid var(--line);background:var(--surface);text-align:left;color:var(--ink)}
+  .quick-row:last-child{border-bottom:0}
+  .quick-row:active{background:var(--surface2)}
+  .quick-row .qicon{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;position:relative;overflow:hidden;border:1px solid var(--line)}
+  .quick-row .qicon svg{width:26px;height:26px;display:block}
+  .quick-row .qicon.f{background-color:var(--free-tile);background-image:radial-gradient(var(--free-dot) 1.2px,transparent 1.2px);background-size:11px 11px;color:var(--free-ink)}
+  .quick-row .qicon.g{background-color:var(--gal-tile);background-image:radial-gradient(var(--gal-dot) 1.2px,transparent 1.2px);background-size:11px 11px;color:var(--gal-ink)}
+  .quick-row b{font-size:15px;display:block;font-weight:700;letter-spacing:-.01em}
+  .quick-row span{font-size:12.5px;color:var(--muted);display:block;margin-top:2px;line-height:1.4}
+  .quick-row .chev{margin-left:auto;color:#cbd5e1;font-size:22px;font-weight:300;line-height:1}
+  @media (prefers-color-scheme: dark){ .quick-row .chev{color:#475569} }
+  .home-note{margin-top:14px;font-size:13px;line-height:1.65;color:var(--muted);padding:0 2px}
+  /* DATA EXPLAINER — how the Inven posts get in */
+  .data-card{margin-top:16px;background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:16px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+  .data-card::before{content:"";position:absolute;inset:0;background-image:radial-gradient(var(--dot) 1.1px,transparent 1.1px);background-size:16px 16px;pointer-events:none}
+  .data-card h3{margin:0 0 8px;font-size:14.5px;font-weight:800;letter-spacing:-.01em;display:flex;align-items:center;gap:8px;position:relative}
+  .data-card h3 .dic{width:26px;height:26px;border-radius:8px;background:var(--accent-soft);color:var(--accent-dark);display:inline-grid;place-items:center;flex:0 0 auto}
+  .data-card h3 .dic svg{width:15px;height:15px;display:block}
+  .data-card p{margin:0;font-size:13px;line-height:1.7;color:var(--muted);position:relative}
+  .data-card p b{color:var(--ink)}
+  .data-card .when{margin-top:10px;display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;background:var(--surface2);border:1px solid var(--line);color:var(--ink);padding:6px 10px;border-radius:999px;position:relative}
+  .data-card .when i{width:6px;height:6px;border-radius:50%;background:var(--ok);display:block}
+  /* PHONE HOME SCREEN — status bar, wallpaper, widget, app grid */
+  .statusbar{display:flex;align-items:center;justify-content:space-between;padding:12px 22px 2px;font-size:14.5px;font-weight:700;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+  .statusbar .sb-icons{display:inline-flex;align-items:center;gap:6px;color:var(--ink)}
+  .statusbar .sb-icons svg{display:block}
+  @media (min-width:760px){
+    body{padding-top:26px}
+    .shell{border:1.5px solid var(--line);border-radius:44px;box-shadow:0 30px 80px rgba(28,31,36,.16),0 4px 16px rgba(28,31,36,.08);overflow:clip;min-height:calc(100dvh - 26px)}
+  }
+  .wallpaper{margin-top:10px;border:1px solid var(--line);border-radius:30px;padding:24px 18px 18px;position:relative;overflow:hidden;background:linear-gradient(165deg,#edf3f9 0%,#f8f4ec 52%,#edf4ef 100%);box-shadow:var(--shadow)}
+  .wallpaper::before{content:"";position:absolute;inset:0;background-image:radial-gradient(var(--dot) 1.2px,transparent 1.2px);background-size:17px 17px;pointer-events:none}
+  .wallpaper::after{content:"";position:absolute;right:-52px;top:-52px;width:160px;height:160px;border-radius:50%;border:26px solid rgba(255,255,255,.5);pointer-events:none}
+  @media (prefers-color-scheme: dark){
+    .wallpaper{background:linear-gradient(165deg,#1e2833 0%,#27251f 52%,#202b25 100%)}
+    .wallpaper::after{border-color:rgba(255,255,255,.06)}
+  }
+  .widget{position:relative;z-index:1;text-align:center;padding:6px 0 22px}
+  .widget .wtime{font-size:58px;font-weight:800;letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums}
+  .widget .wdate{margin-top:9px;font-size:15px;color:var(--muted);font-weight:600}
+  .appgrid{position:relative;z-index:1;display:grid;grid-template-columns:repeat(4,1fr);gap:20px 8px}
+  .papp{border:0;background:transparent;padding:0;display:flex;flex-direction:column;align-items:center;gap:7px;color:var(--ink);-webkit-tap-highlight-color:transparent;min-height:0}
+  .papp:active .picon{transform:scale(.92)}
+  .papp:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:20px}
+  .picon{width:62px;height:62px;border-radius:18px;display:grid;place-items:center;position:relative;border:1px solid var(--line);transition:transform .15s cubic-bezier(.34,1.56,.64,1);box-shadow:0 2px 6px rgba(28,31,36,.05),0 8px 18px rgba(28,31,36,.06)}
+  .picon svg{width:32px;height:32px;display:block}
+  .picon.t-free{background-color:var(--free-tile-2);background-image:radial-gradient(var(--free-dot) 1.3px,transparent 1.3px);background-size:13px 13px;color:var(--free-ink)}
+  .picon.t-gal{background-color:var(--gal-tile-2);background-image:radial-gradient(var(--gal-dot) 1.3px,transparent 1.3px);background-size:13px 13px;color:var(--gal-ink)}
+  .picon.t-clock{background-color:#e4f0ea;background-image:radial-gradient(rgba(53,112,92,.14) 1.3px,transparent 1.3px);background-size:13px 13px;color:#35705c}
+  .picon.t-calc{background-color:#e9ecf1;background-image:radial-gradient(rgba(76,90,110,.13) 1.3px,transparent 1.3px);background-size:13px 13px;color:#4c5a6e}
+  @media (prefers-color-scheme: dark){
+    .picon.t-clock{background-color:#22322b;color:#9fd3ba}
+    .picon.t-calc{background-color:#272c34;color:#b3c0d2}
+  }
+  .picon.t-cal{background:#fff;color:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;line-height:1}
+  .picon.t-cal .cal-dow{font-size:10.5px;font-weight:800;color:var(--coral);letter-spacing:.04em}
+  .picon.t-cal .cal-day{font-size:25px;font-weight:800;letter-spacing:-.02em;margin-top:2px}
+  .papp .plabel{font-size:12px;font-weight:600;letter-spacing:-.01em;text-align:center;line-height:1.3}
+  .pcount{position:absolute;top:-7px;right:-7px;background:#e0685a;color:#fff;font-size:11.5px;font-weight:800;min-width:22px;height:22px;border-radius:999px;display:flex;align-items:center;justify-content:center;padding:0 6px;border:2px solid #f6f3ec;font-variant-numeric:tabular-nums;z-index:2}
+  @media (prefers-color-scheme: dark){ .pcount{border-color:#22252a} }
+  .wall-dots{display:flex;gap:6px;justify-content:center;margin-top:22px;position:relative;z-index:1}
+  .wall-dots i{width:7px;height:7px;border-radius:50%;background:rgba(28,31,36,.22);display:block}
+  .wall-dots i:first-child{background:var(--ink)}
+  @media (prefers-color-scheme: dark){ .wall-dots i{background:rgba(255,255,255,.25)} .wall-dots i:first-child{background:#f2f2ee} }
+  /* CLOCK APP */
+  .clock-face{text-align:center;padding:40px 16px 34px;background:var(--surface);border:1px solid var(--line);border-radius:24px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+  .clock-face::before{content:"";position:absolute;inset:0;background-image:radial-gradient(var(--dot) 1.1px,transparent 1.1px);background-size:16px 16px;pointer-events:none}
+  .clock-face .ctime{font-size:54px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1.05;position:relative}
+  .clock-face .cdate{margin-top:10px;color:var(--muted);font-size:15px;font-weight:600;position:relative}
+  /* CALENDAR APP */
+  .cal-card{background:var(--surface);border:1px solid var(--line);border-radius:24px;box-shadow:var(--shadow);padding:18px 16px}
+  .cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+  .cal-head b{font-size:17px;letter-spacing:-.01em}
+  .cal-head button{width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:var(--surface2);color:var(--ink);font-size:19px;line-height:1}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}
+  .cal-grid .dow{font-size:11.5px;color:var(--muted);font-weight:700;padding:6px 0}
+  .cal-grid .dow.sun{color:var(--coral)}
+  .cal-grid .day{padding:9px 0;font-size:14px;border-radius:10px;font-variant-numeric:tabular-nums}
+  .cal-grid .day.today{background:var(--ink);color:var(--bg);font-weight:800}
+  .cal-grid .day.dim{color:var(--muted);opacity:.4}
+  .cal-today-btn{margin-top:14px;width:100%;border:1px solid var(--line);background:var(--surface2);color:var(--ink);border-radius:12px;font-weight:800;padding:11px}
+  /* CALCULATOR APP */
+  .calc-card{background:var(--surface);border:1px solid var(--line);border-radius:24px;box-shadow:var(--shadow);padding:16px}
+  .calc-disp{background:var(--surface2);border:1px solid var(--line);border-radius:16px;padding:18px 16px;font-size:34px;font-weight:800;text-align:right;min-height:78px;display:flex;align-items:center;justify-content:flex-end;font-variant-numeric:tabular-nums;word-break:break-all;letter-spacing:-.01em}
+  .calc-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
+  .calc-grid button{border:1px solid var(--line);background:var(--surface);border-radius:14px;font-size:19px;font-weight:700;padding:13px 0;color:var(--ink);min-height:52px}
+  .calc-grid button:active{background:var(--surface2)}
+  .calc-grid button.op{background:var(--accent-soft);color:var(--accent-dark);border-color:transparent}
+  .calc-grid button.eq{background:var(--ink);color:var(--bg);border-color:transparent}
+  /* DOCK — floating modern tab bar */
+  .dock{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(12px + env(safe-area-inset-bottom));z-index:40;width:min(520px,calc(100% - 24px));background:color-mix(in srgb,var(--surface) 88%,transparent);-webkit-backdrop-filter:blur(20px) saturate(1.6);backdrop-filter:blur(20px) saturate(1.6);border:1px solid color-mix(in srgb,var(--line) 70%,transparent);box-shadow:0 12px 32px rgba(15,23,42,.14),0 2px 8px rgba(15,23,42,.06),inset 0 1px 0 rgba(255,255,255,.6);border-radius:28px;display:grid;grid-template-columns:1fr 1fr 1fr;padding:6px;gap:2px}
+  @media (prefers-color-scheme: dark){ .dock{box-shadow:0 12px 32px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.08)} }
+  .dock button{border:0;background:transparent;border-radius:22px;padding:6px 4px 7px;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--muted);font-size:11px;font-weight:600;min-height:60px;letter-spacing:-.01em;transition:background .15s,color .15s}
+  .dock button .dicon{width:28px;height:28px;display:grid;place-items:center;line-height:1}
+  .dock button .dicon svg{width:24px;height:24px;display:block}
+  .dock button .dicon-wrap{width:44px;height:28px;border-radius:999px;display:grid;place-items:center;transition:background .15s,transform .15s}
+  .dock button.on{color:var(--ink)}
+  .dock button.on .dicon-wrap{background:var(--ink);color:var(--bg)}
+  .dock button#dockFree.on .dicon-wrap{background:var(--free-tile);color:var(--free-ink)}
+  .dock button#dockGallery.on .dicon-wrap{background:var(--gal-tile);color:var(--gal-ink)}
+  .dock button#dockHome.on .dicon-wrap{background:var(--ink);color:var(--bg)}
+  /* FREE MODEL APP */
+  .model-head{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:16px;box-shadow:var(--shadow)}
+  .model-head h2{margin:0 0 4px;font-size:19px}
+  .model-head p{margin:0;color:var(--muted);font-size:13.5px;line-height:1.55}
+  .model-chips{display:flex;gap:8px;overflow-x:auto;padding:12px 2px 4px;scrollbar-width:none}
+  .model-chips::-webkit-scrollbar{display:none}
+  .mchip{flex:0 0 auto;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:9px 14px;font-weight:800;font-size:13.5px}
+  .mchip.on{border-color:var(--teal);background:#e6f7f4;color:#067a6f}
+  @media (prefers-color-scheme: dark){ .mchip.on{background:#0f2f2c;color:#5eead4} }
+  .model-cards{display:grid;gap:10px;margin-top:12px}
+  .model-card{width:100%;text-align:left;background:var(--surface);border:1.5px solid var(--line);border-radius:16px;padding:14px;display:flex;gap:12px;align-items:center;color:var(--ink)}
+  .model-card.on{border-color:var(--teal)}
+  .model-card .mic{width:48px;height:48px;border-radius:14px;background-color:var(--free-tile);background-image:radial-gradient(var(--free-dot) 1.2px,transparent 1.2px);background-size:11px 11px;color:var(--free-ink);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+  .model-card .mic svg{width:26px;height:26px;display:block}
+  .model-card .mic.alt{background-color:var(--accent-soft);background-image:radial-gradient(var(--free-dot) 1.2px,transparent 1.2px);color:var(--accent-dark)}
+  .model-card b{font-size:15px}
+  .model-card span{font-size:12.5px;color:var(--muted);display:block;margin-top:2px;line-height:1.45}
+  .model-card .free-pill{margin-left:auto;flex:0 0 auto;font-size:11px;font-weight:900;background:#e6f7ee;color:var(--ok);padding:5px 8px;border-radius:999px}
+  .chatbox{margin-top:14px;background:var(--surface);border:1px solid var(--line);border-radius:20px;overflow:hidden;box-shadow:var(--shadow)}
+  .chat-log{padding:14px;display:flex;flex-direction:column;gap:10px;min-height:210px;max-height:360px;overflow:auto}
+  .msg{max-width:88%;padding:10px 12px;border-radius:16px;font-size:14.5px;line-height:1.55;white-space:pre-wrap;word-break:break-word}
+  .msg.bot{background:var(--surface2);align-self:flex-start;border-bottom-left-radius:6px}
+  .msg.me{background:#6ea3cf;color:#fff;align-self:flex-end;border-bottom-right-radius:6px}
+  @media (prefers-color-scheme: dark){ .msg.me{background:#3d6a94} }
+  .msg.err{background:var(--coral-soft);color:var(--ink);align-self:flex-start;border-bottom-left-radius:6px}
+  .msg .retry{display:block;margin-top:8px;border:0;border-radius:10px;background:var(--coral);color:#fff;font-weight:800;font-size:13px;padding:8px 14px;min-height:40px}
+  .msg.typing{color:var(--muted)}
+  .msg.typing .dots i{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--muted);margin-right:3px;animation:blink 1s infinite}
+  .msg.typing .dots i:nth-child(2){animation-delay:.2s}
+  .msg.typing .dots i:nth-child(3){animation-delay:.4s}
+  @keyframes blink{0%,100%{opacity:.25}50%{opacity:1}}
+  @media (prefers-reduced-motion: reduce){ .msg.typing .dots i{animation:none} }
+  .chat-input{display:flex;gap:8px;padding:10px;border-top:1px solid var(--line);background:var(--surface)}
+  .chat-input input{flex:1;min-width:0;border:1.5px solid var(--line);border-radius:12px;background:var(--bg);color:var(--ink);padding:10px 12px;font-size:15px}
+  .chat-input button{border:0;border-radius:12px;background:var(--ink);color:var(--bg);font-weight:800;padding:10px 16px;background:var(--accent);color:#fff}
+  .chat-note{font-size:12px;color:var(--muted);line-height:1.55;margin-top:10px;padding:0 2px}
+  /* OPEN GALLERY - scrollable list with body previews */
+  .gallery-top{display:flex;align-items:center;gap:8px;padding:10px 16px 8px}
+  .gallery-top h2{margin:0;font-size:17px}
+  .gallery-top .live{font-size:11px;font-weight:900;background:var(--gal-tile);color:var(--gal-ink);padding:4px 8px;border-radius:999px}
+  .gallery-top .counter{margin-left:auto;font-size:13px;font-weight:800;color:var(--muted);font-variant-numeric:tabular-nums}
+  .gfilters{display:flex;gap:8px;padding:0 16px 10px}
+  .gchip{border:1.5px solid var(--line);background:var(--surface);color:var(--muted);border-radius:999px;padding:8px 16px;font-weight:900;font-size:14px;min-height:40px}
+  .gchip.on{background:#111;color:#fff;border-color:#111}
+  @media (prefers-color-scheme: dark){ .gchip.on{background:#fff;color:#111;border-color:#fff} }
+  .post-list{display:flex;flex-direction:column;gap:14px;padding:2px 16px 4px}
+  .post-card{background:var(--surface);border:1px solid var(--line);border-radius:20px;overflow:hidden;box-shadow:var(--shadow);color:var(--ink)}
+  .post-media{position:relative;background:#0c0d10}
+  .post-media img,.post-media video{display:block;width:100%;height:auto;max-height:76dvh;object-fit:contain;background:#0c0d10}
+  .media-stack{display:flex;flex-direction:column;gap:2px;background:#0c0d10}
+  .post-media .kind{position:absolute;left:10px;top:10px;background:rgba(20,22,26,.8);color:#fff;font-size:11.5px;font-weight:800;padding:5px 10px;border-radius:999px;line-height:1.3;pointer-events:none}
+  .post-media .vhint{position:absolute;right:10px;bottom:10px;background:rgba(20,22,26,.78);color:#fff;font-size:11px;font-weight:700;padding:5px 9px;border-radius:999px;line-height:1.3;pointer-events:none}
+  .sound-bar{display:flex;align-items:center;gap:10px;padding:0 16px 12px}
+  .sound-btn{display:inline-flex;align-items:center;gap:7px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:9px 15px;font-weight:900;font-size:13.5px;min-height:42px;flex:0 0 auto}
+  .sound-btn svg{width:17px;height:17px;display:block}
+  .sound-btn.on{background:#111;color:#fff;border-color:#111}
+  @media (prefers-color-scheme: dark){ .sound-btn.on{background:#fff;color:#111;border-color:#fff} }
+  .sound-note{font-size:12px;color:var(--muted);line-height:1.45}
+  .post-body{padding:10px 14px 12px}
+  .feed-tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+  .ftag{font-size:12px;font-weight:900;padding:6px 10px;border-radius:999px;background:var(--surface2);color:var(--ink);border:1px solid var(--line)}
+  .ftag.hot{background:#e8836f;color:#fff;border-color:transparent}
+  .ftag.cat{background:transparent;color:var(--muted)}
+  .post-card h3{margin:0;font-size:15.5px;line-height:1.4;letter-spacing:-.01em;font-weight:700;word-break:keep-all}
+  .post-card h3 a{color:inherit;text-decoration:none}
+  .post-excerpt{margin-top:10px;font-size:14px;line-height:1.65;background:var(--surface2);border-radius:12px;padding:11px 13px;word-break:break-word}
+  .post-excerpt .ex-label{display:block;font-size:11px;font-weight:800;color:var(--muted);margin-bottom:2px}
+  .post-excerpt .ex-none{color:var(--muted)}
+  .feed-meta{margin-top:7px;font-size:12px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 10px;line-height:1.5}
+  .post-open{margin-top:10px;display:flex;align-items:center;justify-content:center;width:100%;text-align:center;text-decoration:none;font-weight:700;font-size:13px;border-radius:11px;padding:9px 10px;min-height:40px;background:var(--surface2);color:var(--ink);border:1px solid var(--line)}
+  .list-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--ink);text-align:center;padding:36px 24px;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:20px}
+  .snap-info{font-size:12.5px;color:var(--muted);line-height:1.55;padding:10px 16px 0}
+  .gallery-status{display:flex;align-items:center;gap:8px;padding:0 16px 10px;flex-wrap:wrap}
+  .live-status{font-size:12.5px;font-weight:700;line-height:1.5;display:inline-flex;align-items:center;gap:6px;color:var(--muted)}
+  .live-status i{width:7px;height:7px;border-radius:50%;background:var(--muted);display:block;flex:0 0 auto}
+  .live-status.is-live{color:var(--ok)}
+  .live-status.is-live i{background:var(--ok)}
+  .live-status.is-fallback{color:var(--coral)}
+  .live-status.is-fallback i{background:var(--coral)}
+  .refresh-btn{margin-left:auto;flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:8px 14px;font-weight:800;font-size:13px;min-height:40px}
+  .refresh-btn:active{background:var(--surface2)}
+  .refresh-btn:disabled{opacity:.55;cursor:default}
+  .refresh-btn svg{width:15px;height:15px;display:block}
+  .refresh-btn.spinning svg{animation:spin 1s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @media (prefers-reduced-motion: reduce){ .refresh-btn.spinning svg{animation:none} }
+  footer{padding:14px 16px 8px;text-align:center;font-size:12px;color:var(--muted);line-height:1.6}
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="statusbar" aria-hidden="true">
+    <span id="sbTime">--:--</span>
+    <span class="sb-icons">
+      <svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="7" width="3" height="5" rx="1"/><rect x="5" y="5" width="3" height="7" rx="1"/><rect x="10" y="2.5" width="3" height="9.5" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg>
+      <svg width="17" height="13" viewBox="0 0 24 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M2.5 6a15 15 0 0 1 19 0"/><path d="M5.8 9.8a10.5 10.5 0 0 1 12.4 0"/><path d="M9.2 13.2a6 6 0 0 1 5.6 0"/><circle cx="12" cy="16.2" r="1.4" fill="currentColor" stroke="none"/></svg>
+      <svg width="25" height="12" viewBox="0 0 27 12" fill="none"><rect x="0.7" y="0.7" width="21" height="10.6" rx="3" stroke="currentColor" opacity=".45"/><rect x="2.2" y="2.2" width="14" height="7.6" rx="1.8" fill="currentColor"/><path d="M24.6 4v4a2.2 2.2 0 0 0 0-4Z" fill="currentColor" opacity=".45"/></svg>
+    </span>
+  </div>
+  <div class="topbar">
+    <button class="backbtn" id="backBtn" aria-label="홈으로 돌아가기">‹</button>
+    <div>
+      <h1 id="topTitle">미니앱 홈</h1>
+      <p id="topSub">앱 아이콘을 눌러 앱을 선택하세요</p>
+    </div>
+    <span class="tg-badge" id="tgBadge">브라우저 모드</span>
+  </div>
+
+  <main id="mainEl">
+    <!-- HOME -->
+    <section class="view active" id="view-home">
+      <div class="wallpaper">
+        <div class="widget">
+          <div class="wtime" id="widgetTime">--:--</div>
+          <div class="wdate" id="widgetDate">날짜를 불러오는 중</div>
+        </div>
+        <div class="appgrid">
+          <button class="papp" id="gridFree" aria-label="무료모델 앱 열기">
+            <span class="picon t-free" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5c-1.3 0-2.6-.3-3.7-.8L3 21l1.8-5.8A8.5 8.5 0 1 1 21 11.5Z"/><path d="M8.5 10.8h.01M12.5 10.8h.01M16.5 10.8h.01" stroke-width="2.6"/></svg></span>
+            <span class="plabel">무료모델</span>
+          </button>
+          <button class="papp" id="gridGallery" aria-label="오픈 갤러리 앱 열기">
+            <span class="picon t-gal" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.6" fill="currentColor" stroke="none"/><path d="m5 18 4.5-4.5 2.5 2.5 3-3L20 18"/></svg><span class="pcount" id="galleryCountBadge">6</span></span>
+            <span class="plabel">오픈 갤러리</span>
+          </button>
+          <button class="papp" id="gridClock" aria-label="시계 앱 열기">
+            <span class="picon t-clock" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg></span>
+            <span class="plabel">시계</span>
+          </button>
+          <button class="papp" id="gridCalendar" aria-label="달력 앱 열기">
+            <span class="picon t-cal" aria-hidden="true"><span class="cal-dow" id="calIconDow">오늘</span><span class="cal-day" id="calIconDay">1</span></span>
+            <span class="plabel">달력</span>
+          </button>
+          <button class="papp" id="gridCalc" aria-label="계산기 앱 열기">
+            <span class="picon t-calc" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2.5"/><path d="M8.5 7h7"/><path d="M8.5 12h.01M12 12h.01M15.5 12h.01M8.5 15.5h.01M12 15.5h.01M15.5 15.5h.01M8.5 19h.01M12 19h.01M15.5 19h.01" stroke-width="2.4"/></svg></span>
+            <span class="plabel">계산기</span>
+          </button>
+        </div>
+        <div class="wall-dots" aria-hidden="true"><i></i><i></i></div>
+      </div>
+
+      <p class="home-note">오픈 갤러리 자료는 채널로 전송되지 않습니다. 사진·영상이 이 미니앱 안에서 바로 재생되고, 원문 전체를 볼 때만 링크로 이동합니다.</p>
+
+      <div class="data-card">
+        <h3><span class="dic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5.5" rx="7.5" ry="2.8"/><path d="M4.5 5.5v6c0 1.6 3.4 2.8 7.5 2.8s7.5-1.2 7.5-2.8v-6"/><path d="M4.5 11.5v6c0 1.6 3.4 2.8 7.5 2.8s7.5-1.2 7.5-2.8v-6"/></svg></span>인벤 자료는 어떻게 들어오나요?</h3>
+        <p>갤러리를 열면 <b>실시간 글 목록을 가져와</b> 보여줍니다. 프록시가 자고 있거나 연결이 안 되면, 페이지를 만들 때 확인한 글 목록(스냅샷)을 대신 보여주고 갤러리 상단에 그렇게 표시합니다.</p>
+        <span class="when"><i></i>스냅샷 기준 시각 · <span id="snapWhen">확인 중</span></span>
+      </div>
+    </section>
+
+    <!-- FREE MODEL APP -->
+    <section class="view" id="view-free">
+      <div class="model-head">
+        <h2 style="display:flex;align-items:center;gap:10px"><span style="width:36px;height:36px;border-radius:10px;background:var(--free-tile);border:1px solid var(--line);display:inline-grid;place-items:center;flex:0 0 auto"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#33689e" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5c-1.3 0-2.6-.3-3.7-.8L3 21l1.8-5.8A8.5 8.5 0 1 1 21 11.5Z"/></svg></span>무료모델</h2>
+        <p>질문을 입력하면 <b>이 미니앱 안에서 바로</b> 답변이 옵니다. 앱이 닫히거나 봇 채팅으로 넘어가지 않습니다. 미니앱 안 채팅은 키 없는 공개 무료 모델(Pollinations)을 씁니다.</p>
+      </div>
+      <div class="model-chips" id="modelChips"></div>
+      <div class="model-cards" id="modelCards"></div>
+
+      <div class="chatbox">
+        <div class="chat-log" id="chatLog">
+          <div class="msg bot">안녕하세요! 궁금한 걸 입력하고 보내기를 누르면 여기, 앱 안에서 바로 답해 드릴게요.</div>
+        </div>
+        <div class="chat-input">
+          <input id="chatInput" type="text" placeholder="질문을 입력하세요" />
+          <button id="chatSend">보내기</button>
+        </div>
+      </div>
+      <p class="chat-note">선택한 모델: <b id="selectedModelLabel">기본 무료 모델</b> · 답변은 이 화면 안에서 이어집니다. 연결이 실패하면 오류 메시지와 다시 시도 버튼이 표시됩니다.</p>
+    </section>
+
+    <!-- OPEN GALLERY APP -->
+    <section class="view" id="view-gallery">
+      <div class="gallery-top">
+        <h2>오픈 갤러리</h2><span class="live">ㅇㅎ · ㅎㅂ</span>
+        <span class="counter" id="feedCounter">총 6개</span>
+      </div>
+      <div class="gallery-status">
+        <span class="live-status" id="liveStatus"><i></i><span>스냅샷 표시 중</span></span>
+        <button class="refresh-btn" id="refreshBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg><span id="refreshLabel">새로고침</span></button>
+      </div>
+      <div class="gfilters" id="gFilters">
+        <button class="gchip on" data-gf="all">전체</button>
+        <button class="gchip" data-gf="ㅇㅎ">ㅇㅎ만</button>
+        <button class="gchip" data-gf="ㅎㅂ">ㅎㅂ만</button>
+      </div>
+      <div class="sound-bar">
+        <button class="sound-btn" id="soundToggle" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6.5 9H3v6h3.5L11 19V5Z" fill="currentColor" stroke="none"/><path d="M15 9.5a4 4 0 0 1 0 5"/><path d="M17.5 7a7.5 7.5 0 0 1 0 10"/></svg><span id="soundLabel">소리 켜기</span></button>
+        <span class="sound-note" id="soundNote">영상은 목록에서 바로 자동재생돼요. 소리는 이 버튼을 한 번 누르면 켜집니다.</span>
+      </div>
+      <div class="post-list" id="feed"></div>
+      <p class="snap-info" id="snapInfo"></p>
+    </section>
+    <!-- CLOCK APP -->
+    <section class="view" id="view-clock">
+      <div class="clock-face">
+        <div class="ctime" id="clockBig">--:--:--</div>
+        <div class="cdate" id="clockDate"></div>
+      </div>
+      <p class="chat-note">이 기기의 현재 시각입니다. 홈 화면 위젯과 맨 위 상태 바에도 같은 시각이 표시됩니다.</p>
+    </section>
+
+    <!-- CALENDAR APP -->
+    <section class="view" id="view-calendar">
+      <div class="cal-card">
+        <div class="cal-head"><button id="calPrev" aria-label="이전 달">‹</button><b id="calTitle"></b><button id="calNext" aria-label="다음 달">›</button></div>
+        <div class="cal-grid" id="calGrid"></div>
+        <button class="cal-today-btn" id="calToday">오늘로 이동</button>
+      </div>
+    </section>
+
+    <!-- CALCULATOR APP -->
+    <section class="view" id="view-calc">
+      <div class="calc-card">
+        <div class="calc-disp" id="calcDisplay">0</div>
+        <div class="calc-grid" id="calcGridBtns">
+          <button data-k="C" class="op">C</button><button data-k="neg" class="op">±</button><button data-k="%" class="op">%</button><button data-k="/" class="op">÷</button>
+          <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button><button data-k="*" class="op">×</button>
+          <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button><button data-k="-" class="op">−</button>
+          <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button><button data-k="+" class="op">+</button>
+          <button data-k="back">⌫</button><button data-k="0">0</button><button data-k=".">.</button><button data-k="=" class="eq">=</button>
+        </div>
+      </div>
+      <p class="chat-note">이 앱 안에서 바로 계산됩니다. 입력한 내용은 저장되지 않습니다.</p>
+    </section>
+  </main>
+
+  <footer id="pageFooter">인벤 게시글 제목·작성자·수치는 게시판에서 가져온 것으로, 원문은 각 글 링크에서 확인하세요.</footer>
+</div>
+
+<!-- Bottom icon dock -->
+<nav class="dock" aria-label="앱 선택">
+  <button id="dockHome" class="on"><span class="dicon-wrap"><span class="dicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.8 12 3l9 7.8"/><path d="M5.5 9.5V20a1 1 0 0 0 1 1H10v-6h4v6h3.5a1 1 0 0 0 1-1V9.5"/></svg></span></span>홈</button>
+  <button id="dockFree"><span class="dicon-wrap"><span class="dicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5c-1.3 0-2.6-.3-3.7-.8L3 21l1.8-5.8A8.5 8.5 0 1 1 21 11.5Z"/><path d="M8.5 10.8h.01M12.5 10.8h.01M16.5 10.8h.01" stroke-width="2.6"/></svg></span></span>무료모델</button>
+  <button id="dockGallery"><span class="dicon-wrap"><span class="dicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.4" fill="currentColor" stroke="none"/><path d="m5 18 4.5-4.5 2.5 2.5 3-3L20 18"/></svg></span></span>오픈 갤러리</button>
+</nav>
+
+<script>
+var POSTS = [{"id":"2755729","url":"https://www.inven.co.kr/board/webzine/2097/2755729","title":"리센느 첫 단독 콘서트 예매일정","cat":"연예","author":"너빨갱이지","date":"21:07","view":"39","reco":"0","comments":"0"},{"id":"2755728","url":"https://www.inven.co.kr/board/webzine/2097/2755728","title":"전기장판에 타버린 치이카와","cat":"계층","author":"강슬기","date":"20:59","view":"460","reco":"0","comments":"3"},{"id":"2755727","url":"https://www.inven.co.kr/board/webzine/2097/2755727","title":"GTA6 LG 게이밍 TV로 120프레임 후기","cat":"게임","author":"코박죽","date":"20:59","view":"372","reco":"1","comments":"2"},{"id":"2755726","url":"https://www.inven.co.kr/board/webzine/2097/2755726","title":"약후) 일본 억양 배우기","cat":"기타","author":"돌체콜드부르","date":"20:59","view":"545","reco":"0","comments":"2"},{"id":"2755725","url":"https://www.inven.co.kr/board/webzine/2097/2755725","title":"현재 전 세계에서 동시에 일어나고 있는 일","cat":"계층","author":"강슬기","date":"20:57","view":"709","reco":"1","comments":"5"},{"id":"2755724","url":"https://www.inven.co.kr/board/webzine/2097/2755724","title":"다크서클녀의 변신","cat":"기타","author":"돌체콜드부르","date":"20:56","view":"641","reco":"0","comments":"3"},{"id":"2755723","url":"https://www.inven.co.kr/board/webzine/2097/2755723","title":"부라는게 참 숨겨지는 것도 아니고","cat":"계층","author":"강슬기","date":"20:55","view":"576","reco":"0","comments":"2"},{"id":"2755722","url":"https://www.inven.co.kr/board/webzine/2097/2755722","title":"하정우·차정원, 6년 열애라더니…청첩장엔 “열 번째 겨울”","cat":"연예","author":"강슬기","date":"20:51","view":"886","reco":"0","comments":"2"},{"id":"2755721","url":"https://www.inven.co.kr/board/webzine/2097/2755721","title":"인신매매 조직이 앤비디아칩 운반\" 수단방법 안 가린 중국‥트럼프는 \"젠슨 황이 최선\"","cat":"이슈","author":"슬기로움","date":"20:48","view":"531","reco":"0","comments":"2"},{"id":"2755720","url":"https://www.inven.co.kr/board/webzine/2097/2755720","title":"지수의 꿀잠 루틴","cat":"연예","author":"강슬기","date":"20:46","view":"743","reco":"0","comments":"1"},{"id":"2755719","url":"https://www.inven.co.kr/board/webzine/2097/2755719","title":"박지윤 카톡","cat":"연예","author":"근본의d점멸","date":"20:44","view":"1,077","reco":"2","comments":"15"},{"id":"2755718","url":"https://www.inven.co.kr/board/webzine/2097/2755718","title":"GTA6 샀는데 CD가 없어!","cat":"유머","author":"Horieyui","date":"20:43","view":"850","reco":"0","comments":"13"},{"id":"2755717","url":"https://www.inven.co.kr/board/webzine/2097/2755717","title":"송영기리 sns","cat":"이슈","author":"파인더1","date":"20:37","view":"644","reco":"3","comments":"8"},{"id":"2755716","url":"https://www.inven.co.kr/board/webzine/2097/2755716","title":"탑골에 등장한 고스트바둑왕?","cat":"유머","author":"너빨갱이지","date":"20:35","view":"1,035","reco":"1","comments":"9"},{"id":"2755715","url":"https://www.inven.co.kr/board/webzine/2097/2755715","title":"후방)야마다 아이 비키니","cat":"계층","author":"너빨갱이지","date":"20:34","view":"1,228","reco":"1","comments":"6"},{"id":"2755714","url":"https://www.inven.co.kr/board/webzine/2097/2755714","title":"WENDY (웬디) 'Before Sunrise'","cat":"연예","author":"어쩌다한번","date":"20:33","view":"277","reco":"1","comments":"2"},{"id":"2755713","url":"https://www.inven.co.kr/board/webzine/2097/2755713","title":"후방) 야름다운 유부녀","cat":"계층","author":"너빨갱이지","date":"20:32","view":"1,571","reco":"0","comments":"8"},{"id":"2755712","url":"https://www.inven.co.kr/board/webzine/2097/2755712","title":"어쩌다 한번 트리플에스 카에데","cat":"연예","author":"어쩌다한번","date":"20:28","view":"556","reco":"0","comments":"1"},{"id":"2755711","url":"https://www.inven.co.kr/board/webzine/2097/2755711","title":"외교안보라인 싹 다 바꿨다‥동맹파에 힘 실었나?","cat":"이슈","author":"슬기로움","date":"20:26","view":"555","reco":"0","comments":"0"},{"id":"2755710","url":"https://www.inven.co.kr/board/webzine/2097/2755710","title":"사이타마 vs 손오공","cat":"계층","author":"조졋네이거","date":"20:20","view":"709","reco":"0","comments":"6"},{"id":"2755709","url":"https://www.inven.co.kr/board/webzine/2097/2755709","title":"인벤광고 너무 잘눌림","cat":"기타","author":"뜨그랄","date":"20:16","view":"953","reco":"2","comments":"24"},{"id":"2755708","url":"https://www.inven.co.kr/board/webzine/2097/2755708","title":"약후) 골반 쩌는 호피 비키니","cat":"기타","author":"돌체콜드부르","date":"20:16","view":"1,977","reco":"0","comments":"15"},{"id":"2755707","url":"https://www.inven.co.kr/board/webzine/2097/2755707","title":"약후) 수영장 비키니","cat":"기타","author":"돌체콜드부르","date":"20:14","view":"1,571","reco":"2","comments":"7"},{"id":"2755706","url":"https://www.inven.co.kr/board/webzine/2097/2755706","title":"호불호 갈리는 몸매","cat":"계층","author":"입사","date":"20:14","view":"1,475","reco":"0","comments":"2"},{"id":"2755705","url":"https://www.inven.co.kr/board/webzine/2097/2755705","title":"최예나","cat":"연예","author":"돌체콜드부르","date":"20:10","view":"909","reco":"2","comments":"4"},{"id":"2755704","url":"https://www.inven.co.kr/board/webzine/2097/2755704","title":"개구리 발견한 시골 강아지 반응","cat":"계층","author":"입사","date":"20:10","view":"1,691","reco":"2","comments":"10"},{"id":"2755703","url":"https://www.inven.co.kr/board/webzine/2097/2755703","title":"마라톤 때문에 출근을 못하는 의사","cat":"이슈","author":"입사","date":"20:06","view":"2,121","reco":"0","comments":"15"},{"id":"2755702","url":"https://www.inven.co.kr/board/webzine/2097/2755702","title":"예쁜애 + 예쁜애","cat":"연예","author":"돌체콜드부르","date":"20:05","view":"1,470","reco":"2","comments":"4"},{"id":"2755701","url":"https://www.inven.co.kr/board/webzine/2097/2755701","title":"11월에 출시된 신상 과자","cat":"계층","author":"입사","date":"20:04","view":"1,404","reco":"0","comments":"7"},{"id":"2755700","url":"https://www.inven.co.kr/board/webzine/2097/2755700","title":"상대를 잘못 고른 양아치 운전자","cat":"계층","author":"입사","date":"20:02","view":"1,754","reco":"2","comments":"14"},{"id":"2755699","url":"https://www.inven.co.kr/board/webzine/2097/2755699","title":"ㅎㅂ 버거는 맥도날드죠","cat":"기타","author":"존나침","date":"19:57","view":"1,995","reco":"2","comments":"9"},{"id":"2755698","url":"https://www.inven.co.kr/board/webzine/2097/2755698","title":"서울 마라톤 통제 대신 사과하는 경찰","cat":"이슈","author":"작두콩차","date":"19:53","view":"1,697","reco":"0","comments":"15"},{"id":"2755697","url":"https://www.inven.co.kr/board/webzine/2097/2755697","title":"요즘 결혼시장에서 남자들이 기피한다는 여성직업","cat":"기타","author":"제르만크록","date":"19:47","view":"3,485","reco":"1","comments":"11"},{"id":"2755696","url":"https://www.inven.co.kr/board/webzine/2097/2755696","title":"원피스 가상 실사화 (AI)","cat":"유머","author":"돌체콜드부르","date":"19:47","view":"1,700","reco":"1","comments":"20"},{"id":"2755695","url":"https://www.inven.co.kr/board/webzine/2097/2755695","title":"개인적으로 생각하는 가수 '조성모' 노래 중에서 제일 GOAT","cat":"연예","author":"큐땁이알","date":"19:47","view":"667","reco":"2","comments":"5"},{"id":"2755694","url":"https://www.inven.co.kr/board/webzine/2097/2755694","title":"교육부 장관 고민정?","cat":"이슈","author":"윈빈","date":"19:39","view":"1,899","reco":"0","comments":"23"},{"id":"2755693","url":"https://www.inven.co.kr/board/webzine/2097/2755693","title":"국정원장에 강금실... 외교 임웅순, 통일 홍익표, 행안 한준호, 문체 강유정","cat":"이슈","author":"슬기로움","date":"19:38","view":"790","reco":"0","comments":"4"},{"id":"2755692","url":"https://www.inven.co.kr/board/webzine/2097/2755692","title":"민주당 최고회의보고 국민의힘에서 좋아 죽을듯.","cat":"이슈","author":"진겟타원","date":"19:31","view":"1,475","reco":"0","comments":"24"},{"id":"2755691","url":"https://www.inven.co.kr/board/webzine/2097/2755691","title":"대마도 마운자로 부산 배편 근황.","cat":"이슈","author":"몽쉘a","date":"19:18","view":"3,335","reco":"0","comments":"14"},{"id":"2755690","url":"https://www.inven.co.kr/board/webzine/2097/2755690","title":"학폭 기록 때문에 수시 전부 떨어진 아들","cat":"기타","author":"옆사마","date":"19:14","view":"2,736","reco":"4","comments":"38"},{"id":"2755689","url":"https://www.inven.co.kr/board/webzine/2097/2755689","title":"절친과 3P했다는 처자","cat":"계층","author":"달섭지롱","date":"19:07","view":"6,540","reco":"1","comments":"19"},{"id":"2755688","url":"https://www.inven.co.kr/board/webzine/2097/2755688","title":"스마트 안경으로 아르헨티나 의사 시험 부정행위‥117명 재시험 성적 '뚝'","cat":"이슈","author":"Or이유","date":"19:06","view":"1,481","reco":"0","comments":"2"},{"id":"2755687","url":"https://www.inven.co.kr/board/webzine/2097/2755687","title":"빡대가리라 죄송합니다","cat":"이슈","author":"어쩌다반명행","date":"19:04","view":"2,120","reco":"3","comments":"23"},{"id":"2755686","url":"https://www.inven.co.kr/board/webzine/2097/2755686","title":"메타크리틱 점수가 너무 낮다고 평가받는 게임","cat":"게임","author":"파노키","date":"19:04","view":"2,347","reco":"0","comments":"6"},{"id":"2755685","url":"https://www.inven.co.kr/board/webzine/2097/2755685","title":"시험의 종말? AI 콘텍트 렌즈의 시대가 온다","cat":"이슈","author":"Je2다","date":"19:04","view":"1,055","reco":"0","comments":"8"},{"id":"2755684","url":"https://www.inven.co.kr/board/webzine/2097/2755684","title":"조국혁신당.지지율 10% 돌파해","cat":"이슈","author":"명량거북","date":"18:58","view":"1,701","reco":"8","comments":"36"},{"id":"2755683","url":"https://www.inven.co.kr/board/webzine/2097/2755683","title":"광주 마운자로 무상배급 '시작'.real<<글의 놀라운 사실","cat":"이슈","author":"조졋네이거","date":"18:58","view":"1,708","reco":"4","comments":"9"},{"id":"2755682","url":"https://www.inven.co.kr/board/webzine/2097/2755682","title":"올해 변리사 시험 고득점자 42명, 14배 급증","cat":"이슈","author":"Je2다","date":"18:58","view":"1,223","reco":"1","comments":"7"},{"id":"2755681","url":"https://www.inven.co.kr/board/webzine/2097/2755681","title":"TVN '두번째 시그널' 티저 영상","cat":"계층","author":"깨어진돌맹이","date":"18:54","view":"1,139","reco":"3","comments":"8"},{"id":"2755680","url":"https://www.inven.co.kr/board/webzine/2097/2755680","title":"남친 너무 깨는행동 몰래 봐버려서 정떨어져…jpg","cat":"유머","author":"달섭지롱","date":"18:52","view":"3,742","reco":"1","comments":"13"}];
+var SNAPSHOT_AT = "2026년 11월 23일 21:08 (KST)";
+var tg = (window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : null;
+if (tg) { try { tg.ready(); tg.expand(); } catch(e){} }
+function detectTelegram(){
+  if (!tg) return false;
+  try {
+    if (tg.initData && tg.initData.length > 0) return true;
+    if (tg.platform && tg.platform !== 'unknown') return true;
+    if (window.location.hash && window.location.hash.indexOf('tgWebAppData') !== -1) return true;
+    if (window.location.search && window.location.search.indexOf('tgWebApp') !== -1) return true;
+    if (tg.themeParams && Object.keys(tg.themeParams).length > 0 && tg.version) return true;
+  } catch(e){}
+  return false;
+}
+var inTelegram = detectTelegram();
+var badge = document.getElementById('tgBadge');
+if (inTelegram) { badge.textContent = "텔레그램 연결됨"; badge.classList.add('on'); }
+
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* matching */
+var EXPAND = { 'ㅇㅎ':['약후'], 'ㅎㅂ':['후방'] };
+function matchInfo(post){
+  var hits=[];
+  ['ㅇㅎ','ㅎㅂ'].forEach(function(kw){
+    if (post.title.indexOf(kw)!==-1) hits.push({kw:kw, via:kw, literal:true});
+    else if (EXPAND[kw]) EXPAND[kw].forEach(function(v){ if(post.title.indexOf(v)!==-1) hits.push({kw:kw, via:v, literal:false}); });
+  });
+  return hits;
+}
+function matchedPosts(){
+  return POSTS.map(function(p){ return {p:p, hits:matchInfo(p)}; }).filter(function(r){ return r.hits.length; });
+}
+
+/* view switching */
+var views={home:'view-home', free:'view-free', gallery:'view-gallery', clock:'view-clock', calendar:'view-calendar', calc:'view-calc'};
+var titles={
+  home:['미니앱 홈','홈 화면에서 앱 아이콘을 눌러 실행하세요'],
+  free:['무료모델','무료 모델을 골라 대화하는 앱'],
+  gallery:['오픈 갤러리','ㅇㅎ · ㅎㅂ 자료를 목록으로 한 번에 보기'],
+  clock:['시계','지금 시각 확인'],
+  calendar:['달력','달력 앱'],
+  calc:['계산기','계산기 앱']
+};
+var currentView='home';
+function show(name){
+  currentView=name;
+  Object.keys(views).forEach(function(k){ document.getElementById(views[k]).classList.toggle('active', k===name); });
+  var t=titles[name];
+  document.getElementById('topTitle').textContent=t[0];
+  document.getElementById('topSub').textContent=t[1];
+  document.getElementById('backBtn').classList.toggle('show', name!=='home');
+  document.getElementById('mainEl').classList.toggle('flush', name==='gallery');
+  document.body.classList.toggle('in-gallery', name==='gallery');
+  document.getElementById('dockHome').classList.toggle('on', name==='home'||name==='clock'||name==='calendar'||name==='calc');
+  document.getElementById('dockFree').classList.toggle('on', name==='free');
+  document.getElementById('dockGallery').classList.toggle('on', name==='gallery');
+  if (tg && tg.BackButton){ try{ name==='home'?tg.BackButton.hide():tg.BackButton.show(); }catch(e){} }
+  window.scrollTo(0,0);
+  if (typeof onGalleryVisibility==='function') onGalleryVisibility(name==='gallery');
+  if (name==='gallery' && typeof fetchLive==='function') fetchLive();
+  if (name==='calendar' && typeof renderCalendar==='function') renderCalendar();
+}
+document.getElementById('backBtn').addEventListener('click', function(){ show('home'); });
+if (tg && tg.BackButton){ try{ tg.BackButton.onClick(function(){ show('home'); }); }catch(e){} }
+['gridFree','dockFree'].forEach(function(id){ document.getElementById(id).addEventListener('click', function(){ show('free'); }); });
+['gridGallery','dockGallery'].forEach(function(id){ document.getElementById(id).addEventListener('click', function(){ show('gallery'); }); });
+document.getElementById('dockHome').addEventListener('click', function(){ show('home'); });
+
+/* FREE MODEL — in-app chat via the keyless public Pollinations text API.
+   No registered provider key is ever embedded in this page. */
+var MODELS=[
+  {id:'default', name:'기본 무료 모델', provider:'Pollinations 공개 무료', desc:'키 없이 바로 쓰는 기본 대화 모델', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5c-1.3 0-2.6-.3-3.7-.8L3 21l1.8-5.8A8.5 8.5 0 1 1 21 11.5Z"/><path d="M8.5 10.8h.01M12.5 10.8h.01M16.5 10.8h.01" stroke-width="2.6"/></svg>', alt:false, param:''},
+  {id:'openai', name:'OpenAI (Pollinations)', provider:'Pollinations 공개 무료', desc:'Pollinations가 제공하는 OpenAI 모델', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.7 4.6L18 9.2l-4.3 1.6L12 15.4l-1.7-4.6L6 9.2l4.3-1.6L12 3Z"/><path d="M19 15l.7 1.8L21.5 17.5l-1.8.7L19 20l-.7-1.8-1.8-.7 1.8-.7L19 15ZM5 16l.6 1.5L7 18l-1.4.5L5 20l-.6-1.5L3 18l1.4-.5L5 16Z"/></svg>', alt:true, param:'openai'}
+];
+var selectedModel = MODELS[0];
+function renderModels(){
+  var chips=document.getElementById('modelChips'); chips.innerHTML='';
+  var cards=document.getElementById('modelCards'); cards.innerHTML='';
+  MODELS.forEach(function(m){
+    var c=document.createElement('button'); c.className='mchip'+(m.id===selectedModel.id?' on':''); c.textContent=m.name;
+    c.addEventListener('click', function(){ selectedModel=m; renderModels(); });
+    chips.appendChild(c);
+    var card=document.createElement('button'); card.className='model-card'+(m.id===selectedModel.id?' on':'');
+    card.innerHTML='<span class="mic'+(m.alt?' alt':'')+'">'+m.icon+'</span><span style="flex:1"><b>'+esc(m.name)+'</b><span>'+esc(m.provider)+' · '+esc(m.desc)+'</span></span><span class="free-pill">무료</span>';
+    card.addEventListener('click', function(){ selectedModel=m; renderModels(); addBotMsg(m.name+' 모델을 선택했어요. 이제 아래에 질문을 입력해 보세요.'); });
+    cards.appendChild(card);
+  });
+  document.getElementById('selectedModelLabel').textContent=selectedModel.name;
+}
+function addBotMsg(text){
+  var log=document.getElementById('chatLog');
+  var d=document.createElement('div'); d.className='msg bot'; d.textContent=text; log.appendChild(d); log.scrollTop=log.scrollHeight;
+}
+function addMyMsg(text){
+  var log=document.getElementById('chatLog');
+  var d=document.createElement('div'); d.className='msg me'; d.textContent=text; log.appendChild(d); log.scrollTop=log.scrollHeight;
+}
+var chatHistory=[]; /* in-memory only: {role:'user'|'assistant', text} */
+var chatBusy=false;
+function buildPrompt(userText){
+  var lines=['You are a helpful assistant. Answer in the same language the user writes in.'];
+  var recent=chatHistory.slice(-6);
+  recent.forEach(function(h){ lines.push((h.role==='user'?'User: ':'Assistant: ')+h.text); });
+  lines.push('User: '+userText);
+  lines.push('Assistant:');
+  return lines.join('\n');
+}
+function addErrMsg(text, retryText){
+  var log=document.getElementById('chatLog');
+  var d=document.createElement('div'); d.className='msg err'; d.textContent=text;
+  if (retryText){
+    var b=document.createElement('button'); b.className='retry'; b.textContent='다시 시도';
+    b.addEventListener('click', function(){ d.remove(); askModel(retryText); });
+    d.appendChild(b);
+  }
+  log.appendChild(d); log.scrollTop=log.scrollHeight;
+}
+function askModel(userText){
+  if (chatBusy) return;
+  chatBusy=true;
+  var btn=document.getElementById('chatSend'); btn.disabled=true; btn.textContent='답변 중…';
+  var log=document.getElementById('chatLog');
+  var typing=document.createElement('div'); typing.className='msg bot typing';
+  typing.innerHTML='답변을 작성하고 있어요 <span class="dots"><i></i><i></i><i></i></span>';
+  log.appendChild(typing); log.scrollTop=log.scrollHeight;
+  var url='https://text.pollinations.ai/'+encodeURIComponent(buildPrompt(userText));
+  if (selectedModel.param) url+='?model='+encodeURIComponent(selectedModel.param);
+  fetch(url).then(function(res){
+    if (!res.ok) throw new Error('HTTP '+res.status);
+    return res.text();
+  }).then(function(text){
+    typing.remove();
+    var answer=(text||'').trim();
+    if (!answer) throw new Error('empty');
+    chatHistory.push({role:'user', text:userText});
+    chatHistory.push({role:'assistant', text:answer});
+    addBotMsg(answer);
+  }).catch(function(){
+    typing.remove();
+    addErrMsg('답변을 가져오지 못했어요. 연결을 확인하고 다시 시도해 주세요.', userText);
+  }).then(function(){
+    chatBusy=false; btn.disabled=false; btn.textContent='보내기';
+  });
+}
+function sendChat(){
+  var inp=document.getElementById('chatInput'); var v=inp.value.trim(); if(!v || chatBusy) return;
+  addMyMsg(v);
+  inp.value='';
+  askModel(v);
+}
+document.getElementById('chatSend').addEventListener('click', sendChat);
+document.getElementById('chatInput').addEventListener('keydown', function(e){ if(e.key==='Enter') sendChat(); });
+
+/* GALLERY — media-first: each post's actual body photos/videos, kept as separate files in a media/ folder
+   next to index.html so they play right here in the list.
+   items: ordered body media; t:'v' = mp4 video (a:1 = has an audio track,
+   a:0 = silent clip), t:'i' = photo/GIF image (a GIF animates on its own
+   inside an <img>, no player needed). poster: first-frame thumbnail. */
+var BODY = {
+  '2755726':{poster:'media/poster-2755726.jpg', media:'영상 1개', items:[{t:'v', src:'media/2755726-v1.mp4', a:1}]},
+  '2755715':{poster:'media/poster-2755715.jpg', media:'영상 5개', items:[{t:'v', src:'media/2755715-v1.mp4', a:0},{t:'v', src:'media/2755715-v2.mp4', a:0},{t:'v', src:'media/2755715-v3.mp4', a:0},{t:'v', src:'media/2755715-v4.mp4', a:0},{t:'v', src:'media/2755715-v5.mp4', a:0}]},
+  '2755713':{poster:'media/poster-2755713.jpg', media:'영상 1개', items:[{t:'v', src:'media/2755713-v1.mp4', a:1}]},
+  '2755708':{poster:'media/poster-2755708.jpg', media:'영상 1개', items:[{t:'v', src:'media/2755708-v1.mp4', a:1}]},
+  '2755707':{poster:'media/poster-2755707.jpg', media:'영상 1개', items:[{t:'v', src:'media/2755707-v1.mp4', a:1}]},
+  '2755699':{poster:'media/poster-2755699.jpg', media:'사진 4장 · 영상 2개', items:[{t:'i', src:'media/2755699-p1.jpg'},{t:'i', src:'media/2755699-p2.jpg'},{t:'i', src:'media/2755699-p3.webp'},{t:'i', src:'media/2755699-p4.jpg'},{t:'v', src:'media/2755699-v1.mp4', a:1},{t:'v', src:'media/2755699-v2.mp4', a:1}]}
+};
+var galleryFilter='all';
+/* LIVE FEED — the gallery fetches the current ㅇㅎ·ㅎㅂ list from the Inven
+   proxy when it opens (and on 새로고침). The proxy is a free container that
+   sleeps after ~90 min idle, so the first call after a sleep can return a
+   loading page instead of JSON: a short timeout plus strict JSON/shape
+   checks turn that into a fetch failure, and ANY failure falls back to the
+   baked snapshot (POSTS) so the gallery is never empty. Live posts are new,
+   so they have no local media files — a card only gets inline media when
+   BODY has an entry for its id (the snapshot posts do). */
+var LIVE_URL='https://ostrich-grubby-gecko.abasthan.app/api/inven';
+var liveState='initial'; /* initial | live | fallback (loading tracked separately) */
+var livePostsData=null;
+var liveUpdatedRaw='';
+var liveLoading=false;
+function formatHHMM(raw){
+  if(!raw) return '';
+  var d=new Date(raw);
+  if(isNaN(d.getTime())) return '';
+  return pad2(d.getHours())+':'+pad2(d.getMinutes());
+}
+function currentRowsUnfiltered(){
+  if(liveState==='live' && livePostsData){
+    var byId={};
+    POSTS.forEach(function(p){ byId[p.id]=p; });
+    return livePostsData.map(function(lp){
+      var base=byId[lp.id];
+      var p=base
+        ? {id:lp.id, url:lp.url, title:lp.title, cat:base.cat, author:base.author, date:base.date, view:base.view, reco:base.reco, comments:base.comments}
+        : {id:lp.id, url:lp.url, title:lp.title, cat:'', author:'', date:'', view:'', reco:'', comments:''};
+      return {p:p, hits:matchInfo(p)};
+    });
+  }
+  return matchedPosts();
+}
+function updateLiveStatusUI(totalCount){
+  var el=document.getElementById('liveStatus');
+  var btn=document.getElementById('refreshBtn');
+  var info=document.getElementById('snapInfo');
+  if(btn){
+    btn.disabled=liveLoading;
+    btn.classList.toggle('spinning', liveLoading);
+    var bl=document.getElementById('refreshLabel'); if(bl) bl.textContent=liveLoading?'불러오는 중':'새로고침';
+  }
+  if(el){
+    var cls='', txt='';
+    if(liveLoading){ txt='실시간 불러오는 중…'; }
+    else if(liveState==='live'){
+      cls='is-live';
+      var hm=formatHHMM(liveUpdatedRaw);
+      txt=hm?('실시간 · '+hm+' 업데이트'):'실시간 업데이트됨';
+    }
+    else if(liveState==='fallback'){ cls='is-fallback'; txt='실시간 연결 안 됨 — 스냅샷 표시 중'; }
+    else { txt='스냅샷 표시 중'; }
+    el.className='live-status '+cls;
+    el.innerHTML='<i></i><span>'+esc(txt)+'</span>';
+  }
+  if(info){
+    if(liveLoading){ info.textContent='실시간 목록을 불러오는 중입니다…'; }
+    else if(liveState==='live'){
+      var hm2=formatHHMM(liveUpdatedRaw);
+      info.textContent='실시간으로 가져온 목록입니다'+(hm2?' · '+hm2+' 업데이트':'')+'. 본문 사진·영상은 로컬 파일이 있는 글에만 표시되고, 새 글은 원문 링크에서 전체를 볼 수 있습니다.';
+    }
+    else if(liveState==='fallback'){ info.textContent='실시간 연결이 안 돼서 스냅샷을 보여주고 있습니다. 스냅샷 기준 시각: '+SNAPSHOT_AT+' · ㅇㅎ·ㅎㅂ 글 '+totalCount+'개'; }
+    else { info.textContent='스냅샷 기준 시각: '+SNAPSHOT_AT+' · ㅇㅎ·ㅎㅂ 글 '+totalCount+'개. 갤러리를 열면 실시간 목록을 불러옵니다.'; }
+  }
+  var sw=document.getElementById('snapWhen'); if(sw) sw.textContent=SNAPSHOT_AT;
+}
+function fetchLive(){
+  if(liveLoading) return;
+  liveLoading=true;
+  updateLiveStatusUI(currentRowsUnfiltered().length);
+  var controller=('AbortController' in window)?new AbortController():null;
+  var timer=null;
+  if(controller){ timer=setTimeout(function(){ try{ controller.abort(); }catch(e){} },15000); }
+  var opts={cache:'no-store'};
+  if(controller) opts.signal=controller.signal;
+  fetch(LIVE_URL, opts).then(function(res){
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    return res.text();
+  }).then(function(text){
+    var data=null;
+    try{ data=JSON.parse(text); }catch(e){ throw new Error('not-json'); }
+    if(!data || !Array.isArray(data.matched) || !data.matched.length) throw new Error('bad-data');
+    var cleaned=[];
+    data.matched.forEach(function(m){
+      if(m && m.id!=null && m.title && m.url) cleaned.push({id:String(m.id), title:String(m.title), url:String(m.url)});
+    });
+    if(!cleaned.length) throw new Error('bad-data');
+    if(timer) clearTimeout(timer);
+    livePostsData=cleaned;
+    liveUpdatedRaw=data.updated_at||'';
+    liveState='live';
+    liveLoading=false;
+    renderFeed();
+  }).catch(function(){
+    if(timer) clearTimeout(timer);
+    livePostsData=null;
+    liveState='fallback';
+    liveLoading=false;
+    renderFeed();
+  });
+}
+function renderFeed(){
+  var allRows=currentRowsUnfiltered();
+  var rows=allRows;
+  if (galleryFilter!=='all') rows=rows.filter(function(r){ return r.hits.some(function(h){ return h.kw===galleryFilter; }); });
+  document.getElementById('galleryCountBadge').textContent=allRows.length;
+  updateLiveStatusUI(allRows.length);
+  document.getElementById('feedCounter').textContent='총 '+rows.length+'개';
+  var feed=document.getElementById('feed'); feed.innerHTML='';
+  if(!rows.length){
+    feed.innerHTML='<div class="list-empty"><div style="width:64px;height:64px;border-radius:20px;background:var(--surface2);border:1px solid var(--line);display:grid;place-items:center;margin-bottom:6px"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-3.8-3.8"/></svg></div><b>이 필터에는 자료가 없어요</b><span style="color:var(--muted);font-size:14px;line-height:1.6">전체로 바꾸면 모든 ㅇㅎ·ㅎㅂ 자료를 볼 수 있습니다.</span></div>';
+    setupFeedVideos();
+    return;
+  }
+  rows.forEach(function(row){
+    var p=row.p;
+    var b=BODY[p.id]||{poster:'', media:'', items:[]};
+    var item=document.createElement('article'); item.className='post-card';
+    var tags=row.hits.map(function(h){ return '<span class="ftag hot">'+esc(h.kw)+(h.literal?'':' · '+esc(h.via))+'</span>'; }).join('')+(p.cat?'<span class="ftag cat">'+esc(p.cat)+'</span>':'')+'<span class="ftag cat">오픈이슈갤러리</span>';
+    var metaParts=[];
+    if(p.author) metaParts.push('<span>@'+esc(p.author)+'</span>');
+    if(p.date) metaParts.push('<span>'+esc(p.date)+'</span>');
+    if(p.view) metaParts.push('<span>조회 '+esc(p.view)+'</span>');
+    if(p.reco) metaParts.push('<span>추천 '+esc(p.reco)+'</span>');
+    if(p.comments) metaParts.push('<span>댓글 '+esc(p.comments)+'</span>');
+    var metaHtml=metaParts.length?'<div class="feed-meta">'+metaParts.join('')+'</div>':'';
+    var mediaHtml='';
+    if (b.items && b.items.length){
+      var parts=[];
+      b.items.forEach(function(m, mi){
+        var kindTag = mi===0 ? '<span class="kind">본문 · '+esc(b.media)+'</span>' : '';
+        if (m.t==='v'){
+          var posterAttr = (mi===0 && b.poster) ? ' poster="'+b.poster+'"' : '';
+          parts.push('<div class="post-media"><video class="feed-video" data-src="'+m.src+'"'+posterAttr+' preload="none" muted loop playsinline controls data-audio="'+(m.a?1:0)+'" aria-label="'+esc(p.title)+' 영상 '+(mi+1)+'"></video>'+kindTag+(m.a?'<span class="vhint">소리 있음</span>':'')+'</div>');
+        } else {
+          parts.push('<div class="post-media"><img src="'+m.src+'" alt="'+esc(p.title)+' — 본문 사진" loading="lazy">'+kindTag+'</div>');
+        }
+      });
+      mediaHtml='<div class="media-stack">'+parts.join('')+'</div>';
+    } else if (b.poster){
+      mediaHtml='<div class="post-media"><img src="'+b.poster+'" alt="'+esc(p.title)+'" loading="lazy"><span class="kind">본문 · '+esc(b.media)+'</span></div>';
+    }
+    item.innerHTML=
+      mediaHtml+
+      '<div class="post-body"><div class="feed-tags">'+tags+'</div>'+
+      '<h3><a href="'+p.url+'" target="_blank" rel="noopener">'+esc(p.title)+'</a></h3>'+
+      metaHtml+
+      '<a class="post-open" href="'+p.url+'" target="_blank" rel="noopener">원문에서 전체 보기 ↗</a></div>';
+    feed.appendChild(item);
+  });
+  setupFeedVideos();
+}
+/* VIDEO AUTOPLAY + SOUND — browsers only allow autoplay WITH sound after a
+   user tap, so videos start playing muted (autoplay is always allowed
+   muted); the 소리 켜기 button is that tap and unmutes the on-screen videos
+   that have an audio track. An IntersectionObserver plays only videos at
+   least ~35% visible and pauses the rest, so sounds never overlap and
+   off-screen videos don't burn data. GIFs need none of this: an animated
+   GIF in an <img> plays by itself.
+   LAZY SRC: videos are rendered WITHOUT a src (the URL sits in data-src,
+   preload="none") so page load doesn't pull ~14MB of video up front. The
+   first time a card becomes ~35% visible, ensureVideoSrc() moves data-src
+   into src and playback starts; after that the usual visible=play /
+   off-screen=pause behavior applies. This covers both the live list and
+   the snapshot fallback, since both go through renderFeed(). */
+var feedVideos=[];
+var soundOn=false;
+var vidObserver=null;
+function ensureVideoSrc(v){
+  if(v.getAttribute('src')) return;
+  var ds=v.getAttribute('data-src');
+  if(ds) v.setAttribute('src', ds);
+}
+function tryPlay(v){ ensureVideoSrc(v); try{ var pr=v.play(); if(pr&&pr.catch) pr.catch(function(){}); }catch(e){} }
+function applySound(){
+  feedVideos.forEach(function(v){
+    v.muted = !(soundOn && v.getAttribute('data-inview')==='1' && v.getAttribute('data-audio')==='1');
+  });
+  var btn=document.getElementById('soundToggle');
+  if(btn){ btn.classList.toggle('on', soundOn); btn.setAttribute('aria-pressed', soundOn?'true':'false'); }
+  var label=document.getElementById('soundLabel'); if(label) label.textContent = soundOn?'소리 끄기':'소리 켜기';
+  var note=document.getElementById('soundNote');
+  if(note) note.textContent = soundOn ? '소리가 켜졌어요. 화면에 보이는 영상의 소리가 납니다.' : '영상은 목록에서 바로 자동재생돼요. 소리는 이 버튼을 한 번 누르면 켜집니다.';
+}
+function setupFeedVideos(){
+  feedVideos=Array.prototype.slice.call(document.querySelectorAll('.feed-video'));
+  if(vidObserver){ vidObserver.disconnect(); vidObserver=null; }
+  feedVideos.forEach(function(v){
+    v.addEventListener('click', function(){ if(v.paused) tryPlay(v); });
+  });
+  if(!('IntersectionObserver' in window)){
+    feedVideos.forEach(function(v){ v.setAttribute('data-inview','1'); tryPlay(v); });
+    applySound();
+    return;
+  }
+  vidObserver=new IntersectionObserver(function(entries){
+    entries.forEach(function(en){
+      var v=en.target;
+      if(en.intersectionRatio>=0.35){ v.setAttribute('data-inview','1'); tryPlay(v); }
+      else { v.setAttribute('data-inview','0'); v.pause(); }
+    });
+    applySound();
+  },{threshold:[0,0.35,0.75]});
+  feedVideos.forEach(function(v){ vidObserver.observe(v); });
+  applySound();
+}
+function onGalleryVisibility(visible){
+  if(!feedVideos.length) return;
+  if(visible){ feedVideos.forEach(function(v){ if(v.getAttribute('data-inview')==='1') tryPlay(v); }); }
+  else { feedVideos.forEach(function(v){ v.pause(); }); }
+}
+var soundBtnEl=document.getElementById('soundToggle');
+if(soundBtnEl) soundBtnEl.addEventListener('click', function(){
+  soundOn=!soundOn;
+  if(soundOn) feedVideos.forEach(function(v){ if(v.getAttribute('data-inview')==='1') tryPlay(v); });
+  applySound();
+});
+document.addEventListener('visibilitychange', function(){
+  if(!feedVideos.length) return;
+  if(document.hidden) feedVideos.forEach(function(v){ v.pause(); });
+  else if(currentView==='gallery') feedVideos.forEach(function(v){ if(v.getAttribute('data-inview')==='1') tryPlay(v); });
+});
+
+var refreshBtnEl=document.getElementById('refreshBtn');
+if(refreshBtnEl) refreshBtnEl.addEventListener('click', function(){ fetchLive(); });
+
+document.querySelectorAll('[data-gf]').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    galleryFilter=btn.getAttribute('data-gf');
+    document.querySelectorAll('[data-gf]').forEach(function(b){ b.classList.toggle('on', b===btn); });
+    renderFeed();
+    window.scrollTo(0,0);
+  });
+});
+
+/* PHONE HOME SCREEN — live clock for the status bar, widget, and clock app */
+var DOW=['일요일','월요일','화요일','수요일','목요일','금요일','토요일'];
+function pad2(n){ return (n<10?'0':'')+n; }
+function tickClock(){
+  var now=new Date();
+  var hm=pad2(now.getHours())+':'+pad2(now.getMinutes());
+  var sb=document.getElementById('sbTime'); if(sb) sb.textContent=hm;
+  var wt=document.getElementById('widgetTime'); if(wt) wt.textContent=hm;
+  var wd=document.getElementById('widgetDate'); if(wd) wd.textContent=(now.getMonth()+1)+'월 '+now.getDate()+'일 '+DOW[now.getDay()];
+  var cb=document.getElementById('clockBig'); if(cb) cb.textContent=hm+':'+pad2(now.getSeconds());
+  var cd=document.getElementById('clockDate'); if(cd) cd.textContent=now.getFullYear()+'년 '+(now.getMonth()+1)+'월 '+now.getDate()+'일 '+DOW[now.getDay()];
+  var ci=document.getElementById('calIconDay'); if(ci) ci.textContent=now.getDate();
+  var cw=document.getElementById('calIconDow'); if(cw) cw.textContent=DOW[now.getDay()].replace('요일','');
+}
+tickClock(); setInterval(tickClock, 1000);
+document.getElementById('gridClock').addEventListener('click', function(){ show('clock'); });
+document.getElementById('gridCalendar').addEventListener('click', function(){ show('calendar'); });
+document.getElementById('gridCalc').addEventListener('click', function(){ show('calc'); });
+
+/* CALENDAR APP */
+var calNow=new Date(); var calY=calNow.getFullYear(), calM=calNow.getMonth();
+function renderCalendar(){
+  var title=document.getElementById('calTitle'); if(!title) return;
+  title.textContent=calY+'년 '+(calM+1)+'월';
+  var grid=document.getElementById('calGrid'); grid.innerHTML='';
+  ['일','월','화','수','목','금','토'].forEach(function(d,i){
+    var s=document.createElement('span'); s.className='dow'+(i===0?' sun':''); s.textContent=d; grid.appendChild(s);
+  });
+  var startDay=new Date(calY,calM,1).getDay();
+  var days=new Date(calY,calM+1,0).getDate();
+  var prevDays=new Date(calY,calM,0).getDate();
+  var today=new Date();
+  for(var i=0;i<42;i++){
+    var cell=document.createElement('span'); cell.className='day';
+    var dayNum=i-startDay+1;
+    if(dayNum<1){ cell.textContent=prevDays+dayNum; cell.classList.add('dim'); }
+    else if(dayNum>days){ cell.textContent=dayNum-days; cell.classList.add('dim'); }
+    else{
+      cell.textContent=dayNum;
+      if(calY===today.getFullYear()&&calM===today.getMonth()&&dayNum===today.getDate()) cell.classList.add('today');
+    }
+    grid.appendChild(cell);
+  }
+}
+document.getElementById('calPrev').addEventListener('click', function(){ calM--; if(calM<0){ calM=11; calY--; } renderCalendar(); });
+document.getElementById('calNext').addEventListener('click', function(){ calM++; if(calM>11){ calM=0; calY++; } renderCalendar(); });
+document.getElementById('calToday').addEventListener('click', function(){ var t=new Date(); calY=t.getFullYear(); calM=t.getMonth(); renderCalendar(); });
+renderCalendar();
+
+/* CALCULATOR APP */
+var calc={disp:'0', acc:null, op:null, wait:false};
+function calcShow(){ document.getElementById('calcDisplay').textContent=calc.disp; }
+function calcCompute(a,b,op){
+  a=parseFloat(a); b=parseFloat(b);
+  if(isNaN(a)||isNaN(b)) return '0';
+  var r;
+  if(op==='+') r=a+b; else if(op==='-') r=a-b; else if(op==='*') r=a*b;
+  else if(op==='/'){ if(b===0) return '오류'; r=a/b; }
+  else r=b;
+  if(isNaN(r)||!isFinite(r)) return '오류';
+  return String(Math.round(r*1e10)/1e10);
+}
+function calcPress(k){
+  if(/^[0-9]$/.test(k)){
+    if(calc.wait){ calc.disp=k; calc.wait=false; }
+    else if(calc.disp==='0'||calc.disp==='오류') calc.disp=k;
+    else if(calc.disp.replace('-','').replace('.','').length<12) calc.disp+=k;
+  }
+  else if(k==='.'){
+    if(calc.wait){ calc.disp='0.'; calc.wait=false; }
+    else if(calc.disp.indexOf('.')===-1) calc.disp+='.';
+  }
+  else if(k==='C'){ calc={disp:'0', acc:null, op:null, wait:false}; }
+  else if(k==='back'){ if(!calc.wait) calc.disp=calc.disp.length>1?calc.disp.slice(0,-1):'0'; }
+  else if(k==='neg'){ if(calc.disp!=='0'&&calc.disp!=='오류') calc.disp=calc.disp.charAt(0)==='-'?calc.disp.slice(1):'-'+calc.disp; }
+  else if(k==='%'){ var v=parseFloat(calc.disp); if(!isNaN(v)) calc.disp=String(v/100); }
+  else if(k==='='){
+    if(calc.op&&calc.acc!==null){ calc.disp=calcCompute(calc.acc,calc.disp,calc.op); calc.acc=null; calc.op=null; calc.wait=true; }
+  }
+  else{
+    if(calc.op&&calc.acc!==null&&!calc.wait) calc.disp=calcCompute(calc.acc,calc.disp,calc.op);
+    calc.acc=calc.disp; calc.op=k; calc.wait=true;
+  }
+  calcShow();
+}
+document.querySelectorAll('#calcGridBtns button').forEach(function(b){
+  b.addEventListener('click', function(){ calcPress(b.getAttribute('data-k')); });
+});
+
+renderModels();
+renderFeed();
+</script>
+</body>
+</html>
