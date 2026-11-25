@@ -2271,6 +2271,29 @@ function xFilteredPosts(){
   return out;
 }
 function xVideoFallback(v){
+  /* A single load error must not destroy the video: twimg/CDN fetches
+     fail transiently (desktop Chromium shows per-post/per-attempt
+     instability, and a failed fetch reports MEDIA_ERR_SRC_NOT_SUPPORTED).
+     Retry once from data-src; only fall back to poster + link when the
+     retry also fails (or there is no data-src at all). A video that
+     already played gets a fresh retry budget for a later error. */
+  var ds=v.getAttribute('data-src')||'';
+  if(v.currentTime>0) v._xErrs=0;
+  v._xErrs=(v._xErrs||0)+1;
+  if(ds && v._xErrs<=1){
+    v.removeAttribute('src');
+    try{ v.load(); }catch(e){}
+    setTimeout(function(){
+      if(!v.isConnected) return;
+      if(v.getAttribute('data-inview')==='1'){
+        v.setAttribute('src', ds);
+        try{ var pr=v.play(); if(pr&&pr.catch) pr.catch(function(){}); }catch(e){}
+      }
+      /* Off-screen: leave src unset, so the next in-view tryPlay
+         re-assigns data-src and plays (attempt 2). */
+    }, 1500);
+    return;
+  }
   var wrap=v.parentNode;
   if(!wrap) return;
   var poster=v.getAttribute('data-poster')||'';
