@@ -282,7 +282,7 @@
      normal builders, restyled to fill the slide: media flexes to
      fill, the body sits at the bottom. Videos cover the media area,
      images contain (never cropped). */
-  .uni-feed{overflow-y:auto;scroll-snap-type:y mandatory;overscroll-behavior:contain;border-radius:20px;background:#0c0d10;margin:0 16px}
+  .uni-feed{overflow-y:auto;scroll-snap-type:y mandatory;overscroll-behavior:contain;border-radius:20px;background:#0c0d10;margin:0 16px;height:calc(100dvh - 330px);min-height:420px}
   .uni-slide{height:100%;scroll-snap-align:start;scroll-snap-stop:always;display:flex;min-height:0;position:relative}
   .uni-slide .post-card{flex:1;min-height:0;display:flex;flex-direction:column;border:0;border-radius:0;box-shadow:none}
   .uni-slide .media-stack{flex:1;min-height:0}
@@ -607,6 +607,26 @@ var BODY = {
 };
 var galleryFilter='all';
 var mediaFilter='all';
+/* STANDALONE ONLY — the baked BODY snapshot media lives in media/
+   next to the HUB's index.html (repo root), and its srcs are relative
+   (media/2755726-v1.mp4). This page lives in the unified-feed/
+   subfolder, so a relative src 404s here (live: unified-feed/media/…
+   → 404, hub-root media/… → 200) and every snapshot gallery video
+   shows "미디어를 재생할 수 없습니다." whenever the feed falls back
+   to the snapshot (proxy slow/down). Rewrite relative snapshot srcs
+   and posters to the hub-root media folder once, at load, so the
+   snapshot fallback plays here too. */
+(function(){
+  try{
+    if(location.href.indexOf('/unified-feed/')===-1) return;
+    var base=new URL('../media/', location.href).href;
+    Object.keys(BODY).forEach(function(id){
+      var b=BODY[id]; if(!b) return;
+      if(b.poster && b.poster.indexOf('media/')===0) b.poster=base+b.poster;
+      (b.items||[]).forEach(function(m){ if(m.src && m.src.indexOf('media/')===0) m.src=base+m.src; });
+    });
+  }catch(e){}
+})();
 /* MEDIA-TYPE FILTER — a post matches a media type if the card actually
    shows at least one item of that type: video → 영상, photo whose src is
    a .gif → GIF, any other photo → 이미지. The check mirrors the render
@@ -2742,6 +2762,13 @@ function uniFetchMore(fromBookmark){
     if(added.length){
       uniItems=uniRank(uniItems.concat(added));
       uniRenderAppend(added);
+      /* Merge the fresh batch into the RANKED DOM order (not just
+         appended at the end): after a bookmark, similar posts from
+         the fresh batch used to land at the bottom, out of sight, so
+         the re-rank looked like it did nothing. uniRerank re-sorts
+         the DOM to match uniItems and scrolls the post being viewed
+         back into place, so the user stays on the same card. */
+      uniRerank();
       uniSetInfo('새 글 '+added.length+'개가 이어졌어요.');
     } else {
       if(!fromBookmark) uniNoMore=true;
